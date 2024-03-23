@@ -34,7 +34,7 @@ Afin de pouvoir retrouver exactement le même arbre entre l'écriture et la lect
 
 #### Les feuilles
 
-Voir Encodage > Feuille.
+Voir [Encodage > Feuille](#les-feuilles-0xxxxxxx).
 
 > Exemple :\
 > La représentation d'une feuille ayant pour label `a` est `0x01 0x61`.
@@ -45,3 +45,14 @@ Les branches sont représentés d'abord par leur octet indicatif, puis par la re
 
 > Exemple:\
 > La représentation d'une branche ayant pour enfant deux feuilles `a` et `b` est donc `0x80 0x01 0x61 0x01 0x62`.
+
+#### Le nombre de caractères
+
+Le nombre de caractères écrit en tout dans un fichier est enregistré dans un entier de huit octets.\
+En tout, cela veut dire qu'on peut écrire `18446744073709551615` lettres, ce qui est bien plus grand que n'importe quel capacité de données actuelle.
+
+## Body
+
+Le corps du fichier est la représentation du texte origninal écrit grâce à l'algorithme de Huffmann.
+
+> Dans une future version du format de fichier, on pourra utiliser LZ77 afin de pouvoir encore plus compresser les données.
