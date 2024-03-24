@@ -1,8 +1,12 @@
 """Huffmann algorithm."""
 
+from __future__ import annotations
 from bisect import insort
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import TYPE_CHECKING 
+if TYPE_CHECKING:
+    from _typeshed import OpenBinaryMode
 
 class Mode(Enum):
     ENCODE = 0
@@ -73,7 +77,7 @@ by adding 0 to the left child key, and 1 to the right one."""
         children = self.get_children()
         return b'\x80' + children[0].create_header() + children[1].create_header()
 
-class Decoder():
+class Decoder(): #TODO Debug
     def __init__(self, header : bytes) -> None:
         self.header = header
         self.reader = 0
@@ -85,6 +89,27 @@ class Decoder():
             length = int.from_bytes(self.header[self.reader:self.reader+1], "big")
             self.reader += length + 1
             return Leaf(self.header[self.reader - length: self.reader].decode("utf-8"), 1)
+
+class BitManager():
+    def __init__(self, source : str, mode : OpenBinaryMode) -> None:
+        self.file = open(source, mode)
+        self.buffer = 0
+        self.buffer_length = 0
+    def write_bytes(self, bytes : bytes) -> None:
+        self.file.write(bytes)
+    def write(self, bits : str) -> None:
+        for bit in bits:
+            self.buffer <<= 1
+            self.buffer += int(bit)
+            self.buffer_length += 1
+            if self.buffer_length == 8:
+                self.file.write((self.buffer & 255).to_bytes(1, "big"))
+                self.buffer = 0
+                self.buffer_length = 0
+    def flush(self) -> None:
+        if self.buffer_length > 0:
+            self.write(''.join(['0' for _ in range(self.buffer_length, 8)]))
+        self.file.close()
 
 def CreateLeaves(text : str) -> list[Leaf]:
     """Create a list of Leaf objects with all uniques characters in text."""
@@ -107,7 +132,6 @@ def CreateTree(AllNodes : list[Node]) -> Node:
 def CreateTreeFromText(text : str) -> Node:
     """Create a Node object that represents the binary tree extracted from the text."""
     return CreateTree(CreateLeaves(text))
-
 
 def CreateBinaryCodeFromTree(Tree : Node, mode : Mode = Mode.DECODE) -> dict[str, str]:
     """Create a binary to label dictionary from a text."""
@@ -137,18 +161,18 @@ binary source and the binary tree."""
 
 if __name__ == "__main__":
     from sys import getsizeof
+    import os
     filename = __file__
-    with open(filename, "r") as file:
+    target = os.path.join(os.path.dirname(__file__), "huffmann.py.fen")
+    with open(filename, "r", encoding="utf8") as file:
         text = file.read()
-    # text = "aaaabbbbcccc"
     Tree = CreateTreeFromText(text)
     binText = CreateBinaryTextFromText(text)
-    # print(Tree.create_binary_dict())
-    # print(binText := CreateBinaryTextFromText(text))
-    # print(CreateTextFromBinaryText(binText, Tree))
-    print(f"{(textBits := getsizeof(text) * 8)} bits to {(binBits := len(binText))} bits.\
-({100 - round(binBits / textBits * 100, 2)}%)")
     header = Tree.create_header()
-    decoder = Decoder(header)
-    newTree = decoder.CreateTree()
-    print(CreateTextFromBinaryText(binText, newTree))
+    file = BitManager(target, "wb")
+    file.write_bytes(header)
+    file.write_bytes(len(text).to_bytes(8, "big"))
+    file.write(binText)
+    file.flush()
+    print(f"{(textBytes := os.path.getsize(filename))} bytes to {(binBytes := os.path.getsize(target))} bits.\
+({100 - round(binBytes / textBytes * 100, 2)}%)")
